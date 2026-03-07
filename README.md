@@ -138,6 +138,25 @@ urbanshield/
 
 ---
 
+## Deployment (Vercel + Render)
+
+### Vercel (frontend)
+1. Connect your repo to Vercel.
+2. Set **Root Directory** to `frontend`.
+3. Build command: `npm run build` | Output: `dist`.
+4. Environment variables (optional; `.env.production` has defaults):
+   - `VITE_API_URL` = `https://urbansheild.onrender.com/api`
+   - `VITE_WS_URL` = `wss://urbansheild.onrender.com`
+
+### Render (backend)
+1. Create a Web Service; connect your repo.
+2. Set **Root Directory** to `backend`.
+3. Build: `pip install -r requirements.txt`
+4. Start: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+5. Optional env: `CORS_ORIGINS` = comma-separated URLs (e.g. your Vercel app URL).
+
+---
+
 ## Production Readiness
 
 - **Data:** All feeds are mocked/simulated; replace with real APIs (e.g. traffic, 108 ambulance, 112) in the same endpoints.

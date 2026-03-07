@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, useMap, CircleMarker, Polyline, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
+import { API_BASE, getWsUrl } from '../config'
 
 const BANGALORE_CENTER = [12.9716, 77.5946]
 
@@ -43,8 +44,8 @@ export default function EmergencyCorridor({ demoMode }) {
   const [driverAlert, setDriverAlert] = useState(false)
   const wsRef = useRef(null)
 
-  const loadLog = () => fetch('/api/emergency-log').then((r) => r.json()).then(setEmergencyLog)
-  const loadAlerts = () => fetch('/api/alerts').then((r) => r.json()).then(setAlerts)
+  const loadLog = () => fetch(`${API_BASE}/emergency-log`).then((r) => r.json()).then(setEmergencyLog)
+  const loadAlerts = () => fetch(`${API_BASE}/alerts`).then((r) => r.json()).then(setAlerts)
 
   useEffect(() => {
     loadLog()
@@ -52,10 +53,7 @@ export default function EmergencyCorridor({ demoMode }) {
   }, [])
 
   useEffect(() => {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.hostname
-    const port = window.location.port === '5173' ? '8000' : window.location.port
-    const ws = new WebSocket(`${proto}//${host}:${port}/ws`)
+    const ws = new WebSocket(getWsUrl())
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data)
@@ -75,7 +73,7 @@ export default function EmergencyCorridor({ demoMode }) {
 
   const handleDispatch = async () => {
     try {
-      const r = await fetch('/api/ambulance/dispatch', {
+      const r = await fetch(`${API_BASE}/ambulance/dispatch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import { triggerSOS, reverseGeocode } from '../hooks/useApi'
+import { API_BASE, getWsUrl } from '../config'
 
 const BANGALORE_CENTER = [12.9716, 77.5946]
 const HOLD_MS = 3000
@@ -17,14 +18,11 @@ export default function SilentSOS({ demoMode }) {
   const cancelTimerRef = useRef(null)
 
   useEffect(() => {
-    fetch('/api/sos/history').then((r) => r.json()).then(setSosHistory).catch(() => {})
+    fetch(`${API_BASE}/sos/history`).then((r) => r.json()).then(setSosHistory).catch(() => {})
   }, [])
 
   useEffect(() => {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.hostname
-    const port = window.location.port === '5173' ? '8000' : window.location.port
-    const ws = new WebSocket(`${proto}//${host}:${port}/ws`)
+    const ws = new WebSocket(getWsUrl())
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data)

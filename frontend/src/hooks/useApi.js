@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+import { API_BASE, getWsUrl } from '../config'
 
-const API = '/api'
+const API = API_BASE
 
 export function useLiveStats() {
   const [stats, setStats] = useState({})
@@ -34,10 +35,7 @@ export function useDemoMode() {
 
 export function useTrafficWebSocket(setTraffic) {
   useEffect(() => {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.hostname
-    const port = window.location.port === '5173' ? '8000' : window.location.port
-    const ws = new WebSocket(`${proto}//${host}:${port}/ws`)
+    const ws = new WebSocket(getWsUrl())
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data)

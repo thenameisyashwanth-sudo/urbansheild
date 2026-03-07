@@ -90,9 +90,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="UrbanShield 2.0 API", lifespan=lifespan)
+
+# CORS: allow Vercel frontend and localhost for dev
+import os
+_cors_origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://localhost:3000,https://urbansheild-qjjb08tsy-yashwanth-ss-projects-9b1f702d.vercel.app",
+)
+_cors_list = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

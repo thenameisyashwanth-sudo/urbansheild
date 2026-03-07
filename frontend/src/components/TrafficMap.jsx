@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, useMap, CircleMarker, Polyline, Popup } from 'react-leaflet'
 import { useTrafficWebSocket } from '../hooks/useApi'
+import { API_BASE } from '../config'
 
 const BANGALORE_CENTER = [12.9716, 77.5946]
 const VEHICLE_COLORS = {
@@ -68,7 +69,7 @@ export default function TrafficMap({ demoMode }) {
   useTrafficWebSocket(setTraffic)
 
   useEffect(() => {
-    fetch('/api/traffic').then((r) => r.json()).then(setTraffic).catch(() => {})
+    fetch(`${API_BASE}/traffic`).then((r) => r.json()).then(setTraffic).catch(() => {})
   }, [])
 
   const vehicles = traffic?.vehicles ?? []

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet.heat'
 import { MapContainer, TileLayer, useMap, CircleMarker } from 'react-leaflet'
+import { API_BASE } from '../config'
 
 const BANGALORE_CENTER = [12.9716, 77.5946]
 
@@ -32,21 +33,21 @@ export default function CityPlanner({ demoMode }) {
   const [allocation, setAllocation] = useState(null)
 
   useEffect(() => {
-    fetch(`/api/planner/incidents?days=${timeFilter}`)
+    fetch(`${API_BASE}/planner/incidents?days=${timeFilter}`)
       .then((r) => r.json())
       .then(setIncidents)
       .catch(() => setIncidents([]))
   }, [timeFilter])
 
   useEffect(() => {
-    fetch('/api/planner/zones')
+    fetch(`${API_BASE}/planner/zones`)
       .then((r) => r.json())
       .then(setZones)
       .catch(() => {})
   }, [])
 
   useEffect(() => {
-    fetch(`/api/planner/budget?available_lakhs=${budgetLakhs}`)
+    fetch(`${API_BASE}/planner/budget?available_lakhs=${budgetLakhs}`)
       .then((r) => r.json())
       .then(setAllocation)
       .catch(() => {})
