@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet.heat'
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet'
-import { getRoute, reportDeviation } from '../hooks/useApi'
+import { getRoute, reportDeviation, triggerSOS } from '../hooks/useApi'
 
 const BANGALORE_CENTER = [12.9716, 77.5946]
 const DEVIATION_METERS = 0.002 // ~200m in deg approx
@@ -125,16 +125,22 @@ export default function SafeTravel({ demoMode }) {
     const offLat = journeyPosition[0] + DEVIATION_METERS * (Math.random() > 0.5 ? 1 : -1)
     const offLng = journeyPosition[1] + DEVIATION_METERS * (Math.random() > 0.5 ? 1 : -1)
     setJourneyPosition([offLat, offLng])
-    reportDeviation('Demo User', offLat, offLng, 'Planned route')
+    reportDeviation('Demo User', offLat, offLng, 'Planned route', contactPhone, contactName)
     setDeviationAlert({
       message: `DEVIATION ALERT: Demo User has gone off route. Last known: ${journeyPosition[0].toFixed(4)}, ${journeyPosition[1].toFixed(4)}. Expected: route. Current: ${offLat.toFixed(4)}, ${offLng.toFixed(4)}`,
     })
   }
 
-  const handleCheckIn = (safe) => {
+  const handleCheckIn = async (safe) => {
     if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
     setCheckInPrompt(false)
-    if (!safe) setDeviationAlert({ type: 'sos', message: 'User pressed NO / SOS — initiating SOS protocol' })
+    if (!safe) {
+      setDeviationAlert({ type: 'sos', message: 'User pressed NO / SOS — initiating SOS protocol' })
+      const [lat, lng] = journeyPosition || [12.9716, 77.5946]
+      try {
+        await triggerSOS(lat, lng, 'Demo User', 'O+', contactPhone, contactName)
+      } catch (_) {}
+    }
   }
 
   return (

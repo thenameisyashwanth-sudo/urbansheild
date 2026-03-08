@@ -53,11 +53,14 @@ export function useTrafficWebSocket(setTraffic) {
   }, [setTraffic])
 }
 
-export async function triggerSOS(lat, lng, user_name = 'Demo User', blood_type = 'O+') {
+export async function triggerSOS(lat, lng, user_name = 'Demo User', blood_type = 'O+', contact_phone = null, contact_name = null) {
+  const body = { lat, lng, user_name, blood_type }
+  if (contact_phone) body.contact_phone = contact_phone
+  if (contact_name) body.contact_name = contact_name
   const r = await fetch(`${API}/sos/trigger`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lat, lng, user_name, blood_type }),
+    body: JSON.stringify(body),
   })
   return r.json()
 }
@@ -88,10 +91,13 @@ export async function getRoute(originLat, originLng, destLat, destLng) {
   return r.json()
 }
 
-export async function reportDeviation(user_name, lat, lng, expected_route) {
+export async function reportDeviation(user_name, lat, lng, expected_route, contact_phone = null, contact_name = null) {
+  const body = { user_name, lat, lng, expected_route }
+  if (contact_phone) body.contact_phone = contact_phone
+  if (contact_name) body.contact_name = contact_name
   await fetch(`${API}/safe-travel/deviation`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_name, lat, lng, expected_route }),
+    body: JSON.stringify(body),
   })
 }

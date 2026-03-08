@@ -14,6 +14,8 @@ export default function SilentSOS({ demoMode }) {
   const [deliveryStatus, setDeliveryStatus] = useState({ '112': false, whatsapp: false, sms: false })
   const [address, setAddress] = useState('')
   const [sosHistory, setSosHistory] = useState([])
+  const [contactName, setContactName] = useState('Trusted Contact')
+  const [contactPhone, setContactPhone] = useState('')
   const holdTimerRef = useRef(null)
   const cancelTimerRef = useRef(null)
 
@@ -81,7 +83,7 @@ export default function SilentSOS({ demoMode }) {
     await new Promise((r) => setTimeout(r, 400))
     setDeliveryStatus((s) => ({ ...s, sms: true }))
     try {
-      await triggerSOS(lat, lng, 'Demo User', 'O+')
+      await triggerSOS(lat, lng, 'Demo User', 'O+', contactPhone || null, contactName || null)
       setSosHistory((prev) => [{ id: Date.now(), lat, lng, status: 'active', created_at: new Date().toISOString(), address: addr }, ...prev])
     } catch (_) {}
   }
@@ -92,6 +94,23 @@ export default function SilentSOS({ demoMode }) {
     <div className="h-full flex flex-col md:flex-row">
       <div className="p-4 md:w-96 shrink-0 bg-white border-b md:border-b-0 md:border-r border-navy/10">
         <h1 className="text-lg font-semibold text-accent mb-4">Silent SOS (mobile-friendly)</h1>
+        <div className="mb-4 space-y-2">
+          <p className="text-xs font-medium text-navy/70">Trusted contact (gets WhatsApp alert)</p>
+          <input
+            type="text"
+            placeholder="Contact name"
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            className="w-full border border-navy/20 rounded px-3 py-2 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="+91 98765 43210"
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            className="w-full border border-navy/20 rounded px-3 py-2 text-sm"
+          />
+        </div>
         <div className="flex flex-col items-center gap-4">
           <button
             onMouseDown={handlePressStart}
@@ -135,7 +154,9 @@ export default function SilentSOS({ demoMode }) {
                   🆘 Demo User — SOS. Location: {address}. Time: {new Date().toLocaleTimeString()}. Click to track: [mock link]
                 </div>
               )}
-              <p className="text-xs text-navy/60 mt-2">SMS sent to +91XXXXXXXX: SOS from Demo User at {address || 'location'}</p>
+              {contactPhone && (
+                <p className="text-xs text-navy/60 mt-2">WhatsApp sent to {contactPhone} with location and map link.</p>
+              )}
             </>
           )}
         </div>
