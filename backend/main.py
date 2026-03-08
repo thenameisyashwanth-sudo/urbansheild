@@ -18,6 +18,7 @@ from models import (
     get_db,
     SessionLocal,
     EmergencyLog,
+    AmbulanceVerificationVote,
     SOSEvent,
     Alert,
     DeviationAlert,
@@ -44,6 +45,17 @@ class AmbulanceDispatch(BaseModel):
     origin_lng: Optional[float] = None
     dest_lat: Optional[float] = None
     dest_lng: Optional[float] = None
+    # Verification: hospital/private name + vehicle number (accepted as-is, no validation)
+    hospital_or_provider_name: Optional[str] = None
+    vehicle_number: Optional[str] = None
+
+
+class AmbulanceVerifyVote(BaseModel):
+    ambulance_log_id: int
+    user_id: str = "anonymous"
+    lat: float
+    lng: float
+    vote: str  # "yes" | "no"
 
 
 class SafeTravelStart(BaseModel):
@@ -185,6 +197,11 @@ async def ambulance_dispatch(body: AmbulanceDispatch, db: Session = Depends(get_
         road_names=", ".join(road_names),
         eta_minutes=round(eta_min, 1),
         status="active",
+        hospital_or_provider_name=body.hospital_or_provider_name or None,
+        vehicle_number=body.vehicle_number or None,
+        yes_votes=0,
+        no_votes=0,
+        verification_status="pending",
     )
     db.add(log)
     db.commit()
@@ -198,9 +215,80 @@ async def ambulance_dispatch(body: AmbulanceDispatch, db: Session = Depends(get_
         "eta_minutes": round(eta_min, 1),
         "road_names": road_names,
         "log_id": log.id,
+        "hospital_or_provider_name": log.hospital_or_provider_name,
+        "vehicle_number": log.vehicle_number,
+        "verification_status": log.verification_status,
     }
     await broadcast_event("ambulance_dispatch", payload)
     return payload
+
+
+# ---------- Ambulance verification: crowdsourced yes/no votes ----------
+# >20% "no" → escalate to Vision AI (CCTV); most "yes" → crowdsource_verified
+@app.post("/api/ambulance/verify-vote")
+async def ambulance_verify_vote(body: AmbulanceVerifyVote, db: Session = Depends(get_db)):
+    """Users nearby ambulance vote yes/no: 'Is this really an ambulance?'"""
+    log = db.query(EmergencyLog).filter(EmergencyLog.id == body.ambulance_log_id).first()
+    if not log or log.kind != "ambulance":
+        raise HTTPException(404, "Ambulance dispatch not found")
+    # One vote per user per ambulance
+    existing = db.query(AmbulanceVerificationVote).filter(
+        AmbulanceVerificationVote.ambulance_log_id == body.ambulance_log_id,
+        AmbulanceVerificationVote.user_id == body.user_id,
+    ).first()
+    if existing:
+        raise HTTPException(400, "You have already voted for this ambulance")
+
+    # Optional: only accept votes from users within ~500m of ambulance route (origin/dest midpoint for simplicity)
+    # For demo we accept any vote; in prod you'd check distance
+    vote = AmbulanceVerificationVote(
+        ambulance_log_id=body.ambulance_log_id,
+        user_id=body.user_id,
+        lat=body.lat,
+        lng=body.lng,
+        vote="yes" if body.vote.lower() == "yes" else "no",
+    )
+    db.add(vote)
+    if body.vote.lower() == "yes":
+        log.yes_votes = (log.yes_votes or 0) + 1
+    else:
+        log.no_votes = (log.no_votes or 0) + 1
+
+    total = (log.yes_votes or 0) + (log.no_votes or 0)
+    no_pct = (log.no_votes or 0) / total if total else 0
+    if no_pct > 0.2:
+        log.verification_status = "disputed"
+        # Trigger Vision AI (mock for now; integrate Google Vision / CCTV when available)
+        log.vision_verified = None  # Pending Vision AI check
+    else:
+        log.verification_status = "crowdsource_verified"
+
+    db.commit()
+    db.refresh(log)
+    payload = {"log_id": log.id, "yes_votes": log.yes_votes, "no_votes": log.no_votes, "verification_status": log.verification_status}
+    await broadcast_event("ambulance_verification_update", payload)
+    return payload
+
+
+@app.get("/api/ambulance/{log_id}/verification-status")
+def ambulance_verification_status(log_id: int, db: Session = Depends(get_db)):
+    """Get verification status and vote counts for an ambulance dispatch."""
+    log = db.query(EmergencyLog).filter(EmergencyLog.id == log_id).first()
+    if not log or log.kind != "ambulance":
+        raise HTTPException(404, "Ambulance dispatch not found")
+    total = (log.yes_votes or 0) + (log.no_votes or 0)
+    no_pct = ((log.no_votes or 0) / total * 100) if total else 0
+    return {
+        "log_id": log_id,
+        "hospital_or_provider_name": log.hospital_or_provider_name,
+        "vehicle_number": log.vehicle_number,
+        "yes_votes": log.yes_votes or 0,
+        "no_votes": log.no_votes or 0,
+        "total_votes": total,
+        "no_percent": round(no_pct, 1),
+        "verification_status": log.verification_status,
+        "vision_verified": log.vision_verified,
+    }
 
 
 # ---------- SOS ----------
@@ -339,6 +427,11 @@ def emergency_log(db: Session = Depends(get_db), limit: int = 50):
             "eta_minutes": r.eta_minutes,
             "status": r.status,
             "created_at": r.created_at.isoformat() if r.created_at else None,
+            "hospital_or_provider_name": getattr(r, "hospital_or_provider_name", None),
+            "vehicle_number": getattr(r, "vehicle_number", None),
+            "yes_votes": getattr(r, "yes_votes", 0) or 0,
+            "no_votes": getattr(r, "no_votes", 0) or 0,
+            "verification_status": getattr(r, "verification_status", "pending") or "pending",
         }
         for r in rows
     ]

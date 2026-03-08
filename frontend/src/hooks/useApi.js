@@ -71,15 +71,33 @@ export async function reverseGeocode(lat, lng) {
   return d.address || `${lat}, ${lng}`
 }
 
-export async function dispatchAmbulance(origin, dest) {
+export async function dispatchAmbulance(origin, dest, hospitalOrProviderName = null, vehicleNumber = null) {
   const body = {}
   if (origin) { body.origin_lat = origin.lat; body.origin_lng = origin.lng }
   if (dest) { body.dest_lat = dest.lat; body.dest_lng = dest.lng }
+  if (hospitalOrProviderName) body.hospital_or_provider_name = hospitalOrProviderName
+  if (vehicleNumber) body.vehicle_number = vehicleNumber
   const r = await fetch(`${API}/ambulance/dispatch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+  return r.json()
+}
+
+export async function verifyAmbulanceVote(logId, lat, lng, vote, userId = 'anonymous') {
+  const r = await fetch(`${API}/ambulance/verify-vote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ambulance_log_id: logId, user_id: userId, lat, lng, vote }),
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error(typeof data?.detail === 'string' ? data.detail : data?.detail?.[0]?.msg || 'Failed to submit vote')
+  return data
+}
+
+export async function getAmbulanceVerificationStatus(logId) {
+  const r = await fetch(`${API}/ambulance/${logId}/verification-status`)
   return r.json()
 }
 

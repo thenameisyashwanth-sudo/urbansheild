@@ -22,6 +22,29 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    _migrate_ambulance_verification()
+
+
+def _migrate_ambulance_verification():
+    """Add ambulance verification columns to existing emergency_log table."""
+    from sqlalchemy import text
+    conn = engine.connect()
+    try:
+        for col, col_type in [
+            ("hospital_or_provider_name", "VARCHAR(256)"),
+            ("vehicle_number", "VARCHAR(64)"),
+            ("yes_votes", "INTEGER DEFAULT 0"),
+            ("no_votes", "INTEGER DEFAULT 0"),
+            ("verification_status", "VARCHAR(32) DEFAULT 'pending'"),
+            ("vision_verified", "INTEGER"),  # 1=True, 0=False, NULL=pending
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE emergency_log ADD COLUMN {col} {col_type}"))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+    finally:
+        conn.close()
 
 
 # ---------- Traffic ----------
@@ -64,6 +87,26 @@ class EmergencyLog(Base):
     status = Column(String(32), default="active")  # active, responding, resolved
     created_at = Column(DateTime, default=datetime.utcnow)
     resolved_at = Column(DateTime, nullable=True)
+    # Ambulance verification: hospital/private name + vehicle number (accepted as-is)
+    hospital_or_provider_name = Column(String(256), nullable=True)
+    vehicle_number = Column(String(64), nullable=True)
+    # Crowdsource: yes_votes, no_votes; >20% no triggers Vision AI check
+    yes_votes = Column(Integer, default=0)
+    no_votes = Column(Integer, default=0)
+    verification_status = Column(String(32), default="pending")  # pending, crowdsource_verified, vision_verified, disputed, rejected
+    vision_verified = Column(Boolean, nullable=True)  # True/False after Vision AI check; None = not checked
+
+
+class AmbulanceVerificationVote(Base):
+    """User votes (yes/no) on whether nearby ambulance is real. One vote per user per ambulance."""
+    __tablename__ = "ambulance_verification_votes"
+    id = Column(Integer, primary_key=True, index=True)
+    ambulance_log_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(String(128), default="anonymous")  # device id or user id
+    lat = Column(Float)
+    lng = Column(Float)
+    vote = Column(String(8), nullable=False)  # yes | no
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 # ---------- SOS ----------
