@@ -27,6 +27,7 @@ from models import (
 from simulation import generate_vehicles, get_road_segments, ROAD_SEGMENTS
 from congestion import compute_segment_stats, top_congested
 from corridor import get_route_osrm, pick_ambulance_origin_destination, get_hospitals
+from whatsapp import send_whatsapp_to_trusted_contact, format_sos_message, format_deviation_message
 
 # ---------- Pydantic schemas ----------
 class SOSPayload(BaseModel):
@@ -34,6 +35,8 @@ class SOSPayload(BaseModel):
     lng: float
     user_name: str = "Demo User"
     blood_type: str = "O+"
+    contact_phone: Optional[str] = None  # Trusted contact for WhatsApp
+    contact_name: Optional[str] = None
 
 
 class AmbulanceDispatch(BaseModel):
@@ -56,6 +59,8 @@ class DeviationPayload(BaseModel):
     lat: float
     lng: float
     expected_route: str = "Planned route"
+    contact_phone: Optional[str] = None  # Trusted contact for WhatsApp
+    contact_name: Optional[str] = None
 
 
 # ---------- WebSocket broadcast ----------
@@ -95,7 +100,10 @@ app = FastAPI(title="UrbanShield 2.0 API", lifespan=lifespan)
 import os
 _cors_origins = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:3000,https://urbansheild-qjjb08tsy-yashwanth-ss-projects-9b1f702d.vercel.app",
+    "http://localhost:5173," \
+    "http://localhost:3000," \
+    "https://urbansheild-qjjb08tsy-yashwanth-ss-projects-9b1f702d.vercel.app"\
+    "https://urbansheild.vercel.app",
 )
 _cors_list = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(
@@ -240,6 +248,11 @@ async def sos_trigger(body: SOSPayload, db: Session = Depends(get_db)):
     db.add(alert_sms)
     db.commit()
 
+    # WhatsApp to trusted contact
+    if body.contact_phone:
+        msg = format_sos_message(body.user_name, body.lat, body.lng, address="", blood_type=body.blood_type)
+        await send_whatsapp_to_trusted_contact(body.contact_phone, msg)
+
     payload = {"sos_id": event.id, "lat": body.lat, "lng": body.lng, "user_name": body.user_name}
     await broadcast_event("sos_trigger", payload)
     return {"sos_id": event.id, "status": "sent", "alerts": ["112", "whatsapp", "sms"]}
@@ -291,6 +304,10 @@ async def report_deviation(body: DeviationPayload, db: Session = Depends(get_db)
     a = DeviationAlert(user_name=body.user_name, lat=body.lat, lng=body.lng, expected_route=body.expected_route)
     db.add(a)
     db.commit()
+    # WhatsApp to trusted contact
+    if body.contact_phone:
+        msg = format_deviation_message(body.user_name, body.lat, body.lng, body.expected_route)
+        await send_whatsapp_to_trusted_contact(body.contact_phone, msg)
     payload = {"user_name": body.user_name, "lat": body.lat, "lng": body.lng, "expected_route": body.expected_route}
     await broadcast_event("deviation_alert", payload)
     return {"ok": True}
