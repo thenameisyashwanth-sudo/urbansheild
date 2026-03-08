@@ -1,4 +1,4 @@
-# UrbanShield 2.0 — Smart City Public Safety & Traffic Intelligence
+# UrbanShield — Smart City Public Safety & Traffic Intelligence
 
 Full-stack hackathon prototype for Indian cities: smart traffic dashboard, emergency corridor, silent SOS, safe travel, and resource optimisation. Uses **simulated/mock data** where real government APIs are unavailable; architecture is production-ready for swapping in live data later.
 
