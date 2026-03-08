@@ -53,8 +53,8 @@ export function useTrafficWebSocket(setTraffic) {
   }, [setTraffic])
 }
 
-export async function triggerSOS(lat, lng, user_name = 'Demo User', blood_type = 'O+', contact_phone = null, contact_name = null) {
-  const body = { lat, lng, user_name, blood_type }
+export async function triggerSOS(lat, lng, user_name = 'Demo User', blood_type = 'O+', contact_phone = null, contact_name = null, include_112 = true) {
+  const body = { lat, lng, user_name, blood_type, include_112 }
   if (contact_phone) body.contact_phone = contact_phone
   if (contact_name) body.contact_name = contact_name
   const r = await fetch(`${API}/sos/trigger`, {

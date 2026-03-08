@@ -1,11 +1,53 @@
 import { useState, useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet.heat'
-import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import { getRoute, reportDeviation, triggerSOS } from '../hooks/useApi'
+import { API_BASE, getWsUrl } from '../config'
 
 const BANGALORE_CENTER = [12.9716, 77.5946]
 const DEVIATION_METERS = 0.002 // ~200m in deg approx
+const STATIONARY_THRESHOLD_MS = 10 * 60 * 1000 // 10 min
+const STATIONARY_RESPONSE_MS = 10 * 1000 // 10 s to respond before auto-SOS
+const AMBULANCE_PROXIMITY_KM = 0.5 // ~500m
+
+// Fix Leaflet default icon
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+})
+
+// Point-to-segment distance (approx km) - Haversine
+function pointToRouteDistanceKm(plat, plng, routeCoords) {
+  if (!routeCoords?.length) return Infinity
+  let min = Infinity
+  for (let i = 0; i < routeCoords.length - 1; i++) {
+    const [a0, a1] = routeCoords[i]
+    const [b0, b1] = routeCoords[i + 1]
+    const d = _haversineKm(plat, plng, (a0 + b0) / 2, (a1 + b1) / 2)
+    if (d < min) min = d
+  }
+  return min
+}
+function _haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371
+  const dlat = (lat2 - lat1) * Math.PI / 180
+  const dlng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dlat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dlng/2)**2
+  return R * 2 * Math.asin(Math.sqrt(a))
+}
+
+function MapClickHandler({ onMapClick, disabled }) {
+  useMapEvents({
+    click: (e) => {
+      if (disabled) return
+      onMapClick(e.latlng.lat, e.latlng.lng)
+    },
+  })
+  return null
+}
 
 // Mock incident points for night risk (30 points around Bengaluru)
 const INCIDENT_POINTS = (() => {
@@ -65,11 +107,29 @@ export default function SafeTravel({ demoMode }) {
   const [checkInPrompt, setCheckInPrompt] = useState(false)
   const [nightRiskVisible, setNightRiskVisible] = useState(false)
   const [routeWarning, setRouteWarning] = useState(false)
+  const [stationaryPrompt, setStationaryPrompt] = useState(false)
+  const [ambulanceAlert, setAmbulanceAlert] = useState(false)
+  const [ambulanceData, setAmbulanceData] = useState(null)
   const routeCoordsRef = useRef([])
   const journeyIndexRef = useRef(0)
   const checkInTimerRef = useRef(null)
+  const stationaryTimerRef = useRef(null)
+  const stationaryResponseTimerRef = useRef(null)
+  const lastPositionTimeRef = useRef(Date.now())
+  const wsRef = useRef(null)
 
   const defaultDestCoords = { lat: 12.9352, lng: 77.6245 }
+
+  const handleMapClick = async (lat, lng) => {
+    setDestCoords({ lat, lng })
+    try {
+      const r = await fetch(`${API_BASE}/geocode/reverse?lat=${lat}&lng=${lng}`)
+      const d = await r.json()
+      if (d?.address) setDestination(d.address)
+    } catch (_) {
+      setDestination(`${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+    }
+  }
 
   const startJourney = async () => {
     let lat = 12.9716
@@ -81,6 +141,7 @@ export default function SafeTravel({ demoMode }) {
         lng = pos.coords.longitude
       } catch (_) {}
     }
+    lastPositionTimeRef.current = Date.now()
     setOrigin({ lat, lng })
     const dest = destCoords || defaultDestCoords
     setDestCoords(dest)
@@ -108,6 +169,7 @@ export default function SafeTravel({ demoMode }) {
   const simulateJourney = () => {
     const coords = routeCoordsRef.current
     if (!coords.length) return
+    lastPositionTimeRef.current = Date.now()
     const idx = Math.min(journeyIndexRef.current + 2, coords.length - 1)
     journeyIndexRef.current = idx
     setJourneyPosition([coords[idx][0], coords[idx][1]])
@@ -135,13 +197,68 @@ export default function SafeTravel({ demoMode }) {
     if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
     setCheckInPrompt(false)
     if (!safe) {
-      setDeviationAlert({ type: 'sos', message: 'User pressed NO / SOS — initiating SOS protocol' })
+      setDeviationAlert({ type: 'sos', message: 'User pressed NO / SOS — initiating SOS to trusted contacts + 112' })
       const [lat, lng] = journeyPosition || [12.9716, 77.5946]
       try {
-        await triggerSOS(lat, lng, 'Demo User', 'O+', contactPhone, contactName)
+        await triggerSOS(lat, lng, 'Demo User', 'O+', contactPhone, contactName, true)
       } catch (_) {}
     }
   }
+
+  const handleStationaryResponse = async (sendSOS) => {
+    if (stationaryResponseTimerRef.current) clearTimeout(stationaryResponseTimerRef.current)
+    stationaryResponseTimerRef.current = null
+    setStationaryPrompt(false)
+    if (sendSOS) {
+      const [lat, lng] = journeyPosition || [12.9716, 77.5946]
+      try {
+        await triggerSOS(lat, lng, 'Demo User', 'O+', contactPhone, contactName, true)
+        setDeviationAlert({ type: 'sos', message: 'SOS sent to trusted contacts + 112' })
+      } catch (_) {}
+    } else {
+      lastPositionTimeRef.current = Date.now()
+    }
+  }
+
+  useEffect(() => {
+    if (!journeyStarted || checkInPrompt || stationaryPrompt) return
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastPositionTimeRef.current
+      if (elapsed >= STATIONARY_THRESHOLD_MS) {
+        if (stationaryResponseTimerRef.current) clearTimeout(stationaryResponseTimerRef.current)
+        setStationaryPrompt(true)
+        stationaryResponseTimerRef.current = setTimeout(async () => {
+          const [lat, lng] = journeyPosition || [12.9716, 77.5946]
+          try {
+            await triggerSOS(lat, lng, 'Demo User', 'O+', contactPhone, contactName, false)
+            setDeviationAlert({ type: 'sos', message: 'No response — SOS sent to trusted contacts only' })
+          } catch (_) {}
+          setStationaryPrompt(false)
+          stationaryResponseTimerRef.current = null
+        }, STATIONARY_RESPONSE_MS)
+      }
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [journeyStarted, checkInPrompt, stationaryPrompt, journeyPosition, contactPhone, contactName])
+
+  useEffect(() => {
+    fetch(`${API_BASE}/ambulance/active`).then((r) => r.json()).then((d) => d && setAmbulanceData(d)).catch(() => {})
+    const ws = new WebSocket(getWsUrl())
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (data.type === 'ambulance_dispatch') setAmbulanceData(data.payload)
+      } catch (_) {}
+    }
+    wsRef.current = ws
+    return () => ws.close()
+  }, [])
+
+  useEffect(() => {
+    if (!journeyStarted || !journeyPosition || !ambulanceData?.route?.coordinates) return
+    const dist = pointToRouteDistanceKm(journeyPosition[0], journeyPosition[1], ambulanceData.route.coordinates)
+    setAmbulanceAlert(dist <= AMBULANCE_PROXIMITY_KM)
+  }, [journeyStarted, journeyPosition, ambulanceData])
 
   return (
     <div className="h-full flex flex-col">
@@ -177,6 +294,24 @@ export default function SafeTravel({ demoMode }) {
           <>
             <button onClick={simulateJourney} className="px-3 py-2 bg-navy/10 rounded-lg text-sm">Simulate Journey</button>
             <button onClick={simulateDeviation} className="px-3 py-2 bg-warn/20 text-navy rounded-lg text-sm">Simulate Deviation</button>
+            <button
+              onClick={() => {
+                setStationaryPrompt(true)
+                if (stationaryResponseTimerRef.current) clearTimeout(stationaryResponseTimerRef.current)
+                stationaryResponseTimerRef.current = setTimeout(async () => {
+                  const [lat, lng] = journeyPosition || [12.9716, 77.5946]
+                  try {
+                    await triggerSOS(lat, lng, 'Demo User', 'O+', contactPhone, contactName, false)
+                    setDeviationAlert({ type: 'sos', message: 'No response — SOS sent to trusted contacts only' })
+                  } catch (_) {}
+                  setStationaryPrompt(false)
+                  stationaryResponseTimerRef.current = null
+                }, STATIONARY_RESPONSE_MS)
+              }}
+              className="px-3 py-2 bg-amber-100 text-amber-800 rounded-lg text-sm"
+            >
+              Test Stationary Alert
+            </button>
           </>
         )}
         <label className="flex items-center gap-2 text-sm">
@@ -205,10 +340,52 @@ export default function SafeTravel({ demoMode }) {
         </div>
       )}
 
+      {stationaryPrompt && (
+        <div className="px-4 py-3 bg-amber-50 border-b border-amber-200 flex flex-wrap items-center gap-4">
+          <span className="font-medium">You&apos;ve been stationary for 10 min. Traffic, break, or need help?</span>
+          <span className="text-xs text-amber-700">(No response in 10s → SOS to trusted contacts only)</span>
+          <button onClick={() => handleStationaryResponse(false)} className="px-3 py-1 bg-slate-500 text-white rounded">I&apos;m fine (traffic/break)</button>
+          <button onClick={() => handleStationaryResponse(true)} className="px-3 py-1 bg-red-600 text-white rounded">Send SOS (contacts + 112)</button>
+        </div>
+      )}
+
+      {ambulanceAlert && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[1000] bg-orange-500 text-white px-4 py-3 rounded-lg shadow-lg font-medium animate-pulse">
+          Ambulance approaching on your route — move to the left
+        </div>
+      )}
+
       <div className="flex-1 min-h-[300px] relative">
+        <p className="text-xs text-navy/60 px-4 py-1 bg-slate-50 border-b border-navy/5">
+          Click on the map to pin your destination before starting the journey
+        </p>
         <MapContainer center={BANGALORE_CENTER} zoom={12} className="h-full w-full" scrollWheelZoom>
           <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <MapClickHandler onMapClick={handleMapClick} disabled={journeyStarted} />
           <HeatmapLayer visible={nightRiskVisible} points={INCIDENT_POINTS} />
+          {origin && (
+            <CircleMarker
+              center={[origin.lat, origin.lng]}
+              radius={6}
+              pathOptions={{ fillColor: '#22c55e', color: '#0A0F1E', weight: 2, fillOpacity: 1 }}
+            >
+              <Popup>Start</Popup>
+            </CircleMarker>
+          )}
+          {destCoords && !journeyStarted && (
+            <Marker position={[destCoords.lat, destCoords.lng]}>
+              <Popup>Destination — click map to change</Popup>
+            </Marker>
+          )}
+          {destCoords && journeyStarted && (
+            <CircleMarker
+              center={[destCoords.lat, destCoords.lng]}
+              radius={8}
+              pathOptions={{ fillColor: '#dc2626', color: '#0A0F1E', weight: 2, fillOpacity: 1 }}
+            >
+              <Popup>Destination</Popup>
+            </CircleMarker>
+          )}
           {route?.coordinates?.length > 0 && (
             <Polyline positions={route.coordinates} pathOptions={{ color: '#00897B', weight: 5 }} />
           )}

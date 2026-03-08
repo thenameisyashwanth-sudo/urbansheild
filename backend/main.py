@@ -38,6 +38,7 @@ class SOSPayload(BaseModel):
     blood_type: str = "O+"
     contact_phone: Optional[str] = None  # Trusted contact for WhatsApp
     contact_name: Optional[str] = None
+    include_112: bool = True  # If False, SOS goes only to trusted contacts (auto-SOS when no response)
 
 
 class AmbulanceDispatch(BaseModel):
@@ -270,6 +271,25 @@ async def ambulance_verify_vote(body: AmbulanceVerifyVote, db: Session = Depends
     return payload
 
 
+@app.get("/api/ambulance/active")
+def ambulance_active(db: Session = Depends(get_db)):
+    """Latest active ambulance for proximity alerts (Safe Travel users)."""
+    log = db.query(EmergencyLog).filter(
+        EmergencyLog.kind == "ambulance",
+        EmergencyLog.status == "active"
+    ).order_by(EmergencyLog.created_at.desc()).first()
+    if not log:
+        return None
+    route = json.loads(log.route_geojson) if log.route_geojson else {"coordinates": []}
+    return {
+        "log_id": log.id,
+        "origin": {"lat": log.origin_lat, "lng": log.origin_lng},
+        "destination": {"lat": log.destination_lat, "lng": log.destination_lng},
+        "route": route,
+        "road_names": (log.road_names or "").split(", ") if log.road_names else [],
+    }
+
+
 @app.get("/api/ambulance/{log_id}/verification-status")
 def ambulance_verification_status(log_id: int, db: Session = Depends(get_db)):
     """Get verification status and vote counts for an ambulance dispatch."""
@@ -305,14 +325,16 @@ async def sos_trigger(body: SOSPayload, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(event)
 
-    # Log 112 alert
-    alert_112 = Alert(
-        channel="112",
-        title="112 Alert Sent",
-        body=f"SOS from {body.user_name} at ({body.lat}, {body.lng}). Blood: {body.blood_type}",
-        delivered=True,
-    )
-    db.add(alert_112)
+    alerts_sent = ["whatsapp", "sms"]
+    if body.include_112:
+        alert_112 = Alert(
+            channel="112",
+            title="112 Alert Sent",
+            body=f"SOS from {body.user_name} at ({body.lat}, {body.lng}). Blood: {body.blood_type}",
+            delivered=True,
+        )
+        db.add(alert_112)
+        alerts_sent.append("112")
 
     alert_wa = Alert(
         channel="whatsapp",
@@ -343,7 +365,7 @@ async def sos_trigger(body: SOSPayload, db: Session = Depends(get_db)):
 
     payload = {"sos_id": event.id, "lat": body.lat, "lng": body.lng, "user_name": body.user_name}
     await broadcast_event("sos_trigger", payload)
-    return {"sos_id": event.id, "status": "sent", "alerts": ["112", "whatsapp", "sms"]}
+    return {"sos_id": event.id, "status": "sent", "alerts": alerts_sent}
 
 
 @app.get("/api/sos/history")
