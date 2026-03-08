@@ -113,10 +113,8 @@ app = FastAPI(title="UrbanShield 2.0 API", lifespan=lifespan)
 import os
 _cors_origins = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:5173," \
-    "http://localhost:3000," \
-    "https://urbansheild-qjjb08tsy-yashwanth-ss-projects-9b1f702d.vercel.app"\
-    "https://urbansheild.vercel.app",
+    "http://localhost:5173,http://localhost:3000,"
+    "https://urbansheild.vercel.app,https://urbansheild-qjjb08tsy-yashwanth-ss-projects-9b1f702d.vercel.app",
 )
 _cors_list = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(

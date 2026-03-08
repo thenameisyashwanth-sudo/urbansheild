@@ -7,7 +7,8 @@ export const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
 export function getWsUrl() {
   if (import.meta.env.VITE_WS_URL) {
-    return import.meta.env.VITE_WS_URL
+    const url = String(import.meta.env.VITE_WS_URL).trim().replace(/'/g, '')
+    return url.endsWith('/ws') ? url : `${url.replace(/\/$/, '')}/ws`
   }
   // Dev: connect to backend via host and port
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'

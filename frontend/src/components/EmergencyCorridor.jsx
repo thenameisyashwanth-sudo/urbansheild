@@ -156,7 +156,7 @@ export default function EmergencyCorridor({ demoMode }) {
                   value={hospitalName}
                   onChange={(e) => setHospitalName(e.target.value)}
                   placeholder="e.g. Apollo Hospital / Private Ambulance XYZ"
-                  className="w-full px-3 py-2 border border-navy/20 rounded-lg text-sm"
+                  className="input-base w-full text-sm"
                 />
               </div>
               <div>
@@ -166,7 +166,7 @@ export default function EmergencyCorridor({ demoMode }) {
                   value={vehicleNumber}
                   onChange={(e) => setVehicleNumber(e.target.value)}
                   placeholder="e.g. KA-01-AB-1234"
-                  className="w-full px-3 py-2 border border-navy/20 rounded-lg text-sm"
+                  className="input-base w-full text-sm"
                 />
               </div>
             </div>
@@ -178,7 +178,7 @@ export default function EmergencyCorridor({ demoMode }) {
         </div>
       )}
 
-      <div className="flex items-center justify-between p-4 border-b border-navy/10 bg-white">
+      <div className="flex items-center justify-between p-4 border-b border-cyber-border bg-cyber-card">
         <h1 className="text-lg font-semibold text-accent">Emergency Corridor — Ambulance Dispatch</h1>
         <button
           onClick={handleDispatchClick}
@@ -193,7 +193,7 @@ export default function EmergencyCorridor({ demoMode }) {
           <MapContainer center={BANGALORE_CENTER} zoom={12} className="h-full w-full" scrollWheelZoom>
             <TileLayer
               attribution='&copy; OpenStreetMap'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
             />
             {route?.coordinates?.length > 0 && (
               <Polyline positions={route.coordinates} pathOptions={{ color: '#f97316', weight: 6 }} />
@@ -237,11 +237,11 @@ export default function EmergencyCorridor({ demoMode }) {
           )}
         </div>
 
-        <aside className="w-96 shrink-0 border-l border-navy/10 bg-white overflow-auto p-4">
+        <aside className="w-96 shrink-0 border-l border-cyber-border bg-cyber-card overflow-auto p-4 text-content">
           <h2 className="font-mono font-semibold text-accent mb-2">🚨 Alerts Panel (WhatsApp/SMS sim)</h2>
           {ambulance && (
             <>
-              <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded text-sm">
+              <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded text-sm text-navy">
                 🚨 AMBULANCE ALERT: Route from {ambulance.origin?.name} to {ambulance.destination?.name}. ETA: {ambulance.eta_minutes} min. Clear: {roadNames}
                 {(ambulance.hospital_or_provider_name || ambulance.vehicle_number) && (
                   <div className="mt-2 text-xs text-navy/70">
@@ -251,7 +251,7 @@ export default function EmergencyCorridor({ demoMode }) {
                 )}
               </div>
               {/* Crowdsourced verification: "Is this really an ambulance?" */}
-              <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded text-sm">
+              <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded text-sm text-navy">
                 <div className="font-medium text-navy mb-2">Is this really an ambulance?</div>
                 <p className="text-xs text-navy/60 mb-2">Your answer helps verify authenticity. &gt;20% &quot;No&quot; triggers CCTV/Vision AI check.</p>
                 <div className="flex gap-2">
@@ -277,7 +277,7 @@ export default function EmergencyCorridor({ demoMode }) {
           )}
           <div className="space-y-2 max-h-48 overflow-auto">
             {alerts.slice(0, 10).map((a) => (
-              <div key={a.id} className="text-xs p-2 bg-gray-50 rounded border border-gray-100">
+              <div key={a.id} className="text-xs p-2 bg-gray-50 rounded border border-gray-100 text-navy">
                 <span className="font-mono text-accent">{a.channel}</span> — {a.title}
               </div>
             ))}

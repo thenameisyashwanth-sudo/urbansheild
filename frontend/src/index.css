@@ -1,19 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;600&display=swap');
-
 body {
   margin: 0;
   font-family: 'DM Sans', system-ui, sans-serif;
-  background: #F5F2EB;
-  color: #0A0F1E;
+  background: #f8fafc;
+  color: #0f172a;
+  transition: background 0.3s, color 0.3s;
+}
+html.dark body {
+  background: #0a0e17;
+  color: #f1f5f9;
 }
 
-html.dark body {
-  background: #0A0F1E;
-  color: #F5F2EB;
+/* Input base: visible placeholders in both themes */
+.input-base {
+  @apply rounded-lg border px-3 py-2 text-sm transition-colors;
+  @apply bg-slate-100 border-slate-300 text-slate-900 placeholder:text-slate-500;
+  @apply focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50;
+}
+html.dark .input-base {
+  @apply bg-cyber-card border-cyber-border text-content placeholder:text-content/60;
+}
+select.input-base {
+  @apply cursor-pointer;
 }
 
 .leaflet-container {

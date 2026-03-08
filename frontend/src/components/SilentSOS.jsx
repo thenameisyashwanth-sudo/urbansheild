@@ -92,23 +92,23 @@ export default function SilentSOS({ demoMode }) {
 
   return (
     <div className="h-full flex flex-col md:flex-row">
-      <div className="p-4 md:w-96 shrink-0 bg-white border-b md:border-b-0 md:border-r border-navy/10">
+      <div className="p-4 md:w-96 shrink-0 bg-cyber-card border-b md:border-b-0 md:border-r border-cyber-border">
         <h1 className="text-lg font-semibold text-accent mb-4">Silent SOS (mobile-friendly)</h1>
         <div className="mb-4 space-y-2">
-          <p className="text-xs font-medium text-navy/70">Trusted contact (gets WhatsApp alert)</p>
+          <p className="text-xs font-medium text-content/70">Trusted contact (gets WhatsApp alert)</p>
           <input
             type="text"
             placeholder="Contact name"
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
-            className="w-full border border-navy/20 rounded px-3 py-2 text-sm"
+            className="input-base w-full"
           />
           <input
             type="text"
             placeholder="+91 98765 43210"
             value={contactPhone}
             onChange={(e) => setContactPhone(e.target.value)}
-            className="w-full border border-navy/20 rounded px-3 py-2 text-sm"
+            className="input-base w-full"
           />
         </div>
         <div className="flex flex-col items-center gap-4">
@@ -130,7 +130,7 @@ export default function SilentSOS({ demoMode }) {
           )}
           {phase === 'countdown' && (
             <div className="text-center">
-              <p className="text-sm text-navy/80">SOS will trigger in 5 seconds</p>
+              <p className="text-sm text-content/80">SOS will trigger in 5 seconds</p>
               <button onClick={cancelCountdown} className="mt-2 text-sm text-accent underline">Cancel</button>
             </div>
           )}
@@ -155,17 +155,17 @@ export default function SilentSOS({ demoMode }) {
                 </div>
               )}
               {contactPhone && (
-                <p className="text-xs text-navy/60 mt-2">WhatsApp sent to {contactPhone} with location and map link.</p>
+                <p className="text-xs text-content/70 mt-2">WhatsApp sent to {contactPhone} with location and map link.</p>
               )}
             </>
           )}
         </div>
-        <p className="text-xs text-navy/60 mt-4">Hold the SOS button for 3 seconds to activate.</p>
+        <p className="text-xs text-content/70 mt-4">Hold the SOS button for 3 seconds to activate.</p>
       </div>
 
       <div className="flex-1 min-h-[300px]">
         <MapContainer center={BANGALORE_CENTER} zoom={12} className="h-full w-full" scrollWheelZoom>
-          <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <TileLayer attribution="© OpenStreetMap" url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
           {sosHistory.map((e) => (
             <CircleMarker
               key={e.id}

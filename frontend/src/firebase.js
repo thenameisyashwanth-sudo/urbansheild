@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { getDatabase, ref, set, get } from 'firebase/database'
 
 // Firebase web config (public). For production, move to env vars.
 const firebaseConfig = {
@@ -15,4 +16,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const googleProvider = new GoogleAuthProvider()
+export const db = getDatabase(app)
+
+export async function saveUserProfile(uid, profile) {
+  await set(ref(db, `users/${uid}`), { ...profile, updatedAt: Date.now() })
+}
+
+export async function getUserProfile(uid) {
+  const snap = await get(ref(db, `users/${uid}`))
+  return snap.exists() ? snap.val() : null
+}
 

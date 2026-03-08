@@ -65,12 +65,12 @@ export default function CityPlanner({ demoMode }) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-navy/10 bg-white flex flex-wrap items-center gap-4">
-        <h1 className="text-lg font-semibold text-accent">City Planner — Resource Optimisation</h1>
+      <div className="p-4 border-b border-slate-200 dark:border-cyber-border bg-white dark:bg-cyber-card flex flex-wrap items-center gap-4">
+        <h1 className="text-lg font-semibold text-slate-800 dark:text-accent">City Planner — Resource Optimisation</h1>
         <select
           value={timeFilter}
           onChange={(e) => setTimeFilter(Number(e.target.value))}
-          className="border border-navy/20 rounded px-3 py-2 text-sm"
+          className="input-base"
         >
           <option value={1}>Today</option>
           <option value={7}>Last 7 days</option>
@@ -84,7 +84,7 @@ export default function CityPlanner({ demoMode }) {
             max={100}
             value={budgetLakhs}
             onChange={(e) => setBudgetLakhs(Number(e.target.value))}
-            className="border border-navy/20 rounded px-2 py-1 w-20"
+            className="input-base w-24 text-right"
           />
         </label>
       </div>
@@ -92,7 +92,7 @@ export default function CityPlanner({ demoMode }) {
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 min-h-[300px]">
           <MapContainer center={BANGALORE_CENTER} zoom={11} className="h-full w-full" scrollWheelZoom>
-            <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer attribution="© OpenStreetMap" url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
             <HeatmapLayer points={heatPoints} />
             {topGapIds.slice(0, 3).map((id, i) => {
               const lat = 12.97 + (i - 1) * 0.03
@@ -109,18 +109,18 @@ export default function CityPlanner({ demoMode }) {
           </MapContainer>
         </div>
 
-        <aside className="w-96 shrink-0 border-l border-navy/10 bg-white overflow-auto p-4">
-          <h2 className="font-mono font-semibold text-accent mb-2">Ranked Recommendations</h2>
+        <aside className="w-96 shrink-0 border-l border-slate-200 dark:border-cyber-border bg-white dark:bg-cyber-card overflow-auto p-4">
+          <h2 className="font-mono font-semibold text-slate-800 dark:text-accent mb-2">Ranked Recommendations</h2>
           <ul className="space-y-2 text-sm mb-6">
             {recommendations.map((r, i) => (
-              <li key={i} className="p-2 bg-gray-50 rounded border border-gray-100">{r}</li>
+              <li key={i} className="p-2 bg-slate-100 dark:bg-cyber-card rounded border border-slate-200 dark:border-cyber-border text-slate-700 dark:text-content/90">{r}</li>
             ))}
           </ul>
-          <h2 className="font-mono font-semibold text-accent mb-2">Budget Simulation (₹ {budgetLakhs}L)</h2>
+          <h2 className="font-mono font-semibold text-slate-800 dark:text-accent mb-2">Budget Simulation (₹ {budgetLakhs}L)</h2>
           {allocation?.allocation?.length > 0 && (
             <div className="space-y-2 mb-4">
               {allocation.allocation.map((a, i) => (
-                <div key={i} className="flex justify-between text-sm">
+                <div key={i} className="flex justify-between text-sm text-slate-700 dark:text-content/90">
                   <span>{a.intervention} × {a.count}</span>
                   <span className="font-mono">₹{a.cost}L</span>
                 </div>
@@ -129,7 +129,7 @@ export default function CityPlanner({ demoMode }) {
           )}
           <div className="flex flex-col gap-1">
             {allocation?.interventions?.map((int) => (
-              <div key={int.id} className="flex items-center gap-2 text-xs">
+              <div key={int.id} className="flex items-center gap-2 text-xs text-slate-700 dark:text-content/90">
                 <div
                   className="h-4 rounded bg-accent/30"
                   style={{

@@ -79,12 +79,12 @@ export default function TrafficMap({ demoMode }) {
   return (
     <div className="h-full flex">
       {/* Sidebar: Top 5 congested + Signal recommendations */}
-      <aside className="w-80 shrink-0 border-r border-navy/10 bg-white overflow-auto p-4">
+      <aside className="w-80 shrink-0 border-r border-cyber-border bg-cyber-card overflow-auto p-4 text-content">
         <h2 className="font-mono font-semibold text-accent mb-3">Top 5 Congested Segments</h2>
         <ul className="space-y-2 mb-6">
           {topCongested.map((s, i) => (
             <li key={s.segment_id} className="flex items-center gap-2 text-sm">
-              <span className="w-6 h-6 rounded bg-navy/10 flex items-center justify-center font-mono text-xs">{i + 1}</span>
+              <span className="w-6 h-6 rounded bg-cyber-border/50 flex items-center justify-center font-mono text-xs text-accent">{i + 1}</span>
               <span className="flex-1 truncate">{s.name}</span>
               <span className={`w-3 h-3 rounded-full ${
                 s.color === 'green' ? 'bg-green-500' : s.color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
@@ -96,7 +96,7 @@ export default function TrafficMap({ demoMode }) {
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-navy/10">
+              <tr className="border-b border-cyber-border">
                 <th className="text-left py-2">Road</th>
                 <th className="text-right py-2">Congestion</th>
                 <th className="text-right py-2">Green (s)</th>
@@ -104,7 +104,7 @@ export default function TrafficMap({ demoMode }) {
             </thead>
             <tbody>
               {segmentStats.filter((s) => s.congestion_index >= 0.3).slice(0, 8).map((s) => (
-                <tr key={s.segment_id} className="border-b border-navy/5">
+                <tr key={s.segment_id} className="border-b border-cyber-border/50">
                   <td className="py-1.5 truncate max-w-[120px]">{s.name}</td>
                   <td className="text-right">{(s.congestion_index * 100).toFixed(0)}%</td>
                   <td className="text-right font-mono">{s.recommended_green_seconds}</td>
@@ -113,7 +113,7 @@ export default function TrafficMap({ demoMode }) {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-navy/60 mt-2">Vehicle mix: bike/car/auto/truck/bus — weighted green time</p>
+        <p className="text-xs text-content/60 mt-2">Vehicle mix: bike/car/auto/truck/bus — weighted green time</p>
       </aside>
 
       {/* Map */}
@@ -125,8 +125,8 @@ export default function TrafficMap({ demoMode }) {
           scrollWheelZoom
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; OpenStreetMap'
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
           />
           <RoadSegments segmentStats={segmentStats} />
           <VehicleMarkers vehicles={vehicles} />

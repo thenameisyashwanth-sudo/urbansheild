@@ -262,27 +262,27 @@ export default function SafeTravel({ demoMode }) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-navy/10 bg-white flex flex-wrap items-center gap-4">
+      <div className="p-4 border-b border-cyber-border bg-cyber-card flex flex-wrap items-center gap-4">
         <input
           type="text"
           placeholder="Destination (e.g. Koramangala)"
           value={destination}
           onChange={(e) => setDestination(e.target.value)}
-          className="border border-navy/20 rounded px-3 py-2 text-sm w-48"
+          className="input-base w-48"
         />
         <input
           type="text"
           placeholder="Contact name"
           value={contactName}
           onChange={(e) => setContactName(e.target.value)}
-          className="border border-navy/20 rounded px-3 py-2 text-sm w-40"
+          className="input-base w-40"
         />
         <input
           type="text"
           placeholder="Contact phone"
           value={contactPhone}
           onChange={(e) => setContactPhone(e.target.value)}
-          className="border border-navy/20 rounded px-3 py-2 text-sm w-36"
+          className="input-base w-36"
         />
         <button
           onClick={startJourney}
@@ -314,7 +314,7 @@ export default function SafeTravel({ demoMode }) {
             </button>
           </>
         )}
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm text-content">
           <input type="checkbox" checked={nightRiskVisible} onChange={(e) => setNightRiskVisible(e.target.checked)} />
           Night Risk Heatmap
         </label>
@@ -360,7 +360,7 @@ export default function SafeTravel({ demoMode }) {
           Click on the map to pin your destination before starting the journey
         </p>
         <MapContainer center={BANGALORE_CENTER} zoom={12} className="h-full w-full" scrollWheelZoom>
-          <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <TileLayer attribution="© OpenStreetMap" url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png" />
           <MapClickHandler onMapClick={handleMapClick} disabled={journeyStarted} />
           <HeatmapLayer visible={nightRiskVisible} points={INCIDENT_POINTS} />
           {origin && (

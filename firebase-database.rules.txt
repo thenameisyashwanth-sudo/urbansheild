@@ -1,0 +1,13 @@
+# Firebase Realtime Database rules for user profiles
+# Copy these to Firebase Console > Realtime Database > Rules
+
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    }
+  }
+}
